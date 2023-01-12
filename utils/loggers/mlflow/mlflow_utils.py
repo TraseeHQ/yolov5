@@ -34,12 +34,17 @@ class MlflowLogger:
             opt (Namespace): Commandline arguments for this run
         """
         prefix = colorstr("Mlflow: ")
+        self.end_on_finish = False
+        self.mlflow = mlflow
         try:
-            self.mlflow, self.mlflow_active_run = mlflow, None if not mlflow else mlflow.start_run(run_name=opt.name)
-            if self.mlflow_active_run is not None:
-                self.run_id = self.mlflow_active_run.info.run_id
-                LOGGER.info(f"{prefix}Using run_id({self.run_id})")
-                self.setup(opt)
+            self.mlflow = mlflow
+            self.mlflow_active_run = mlflow.active_run()
+            if self.mlflow_active_run is None:
+                self.mlflow_active_run = mlflow.start_run(run_name=opt.name)
+                self.end_on_finish = True
+            self.run_id = self.mlflow_active_run.info.run_id
+            LOGGER.info(f"{prefix}Using run_id({self.run_id})")
+            self.setup(opt)
         except Exception as err:
             LOGGER.error(f"{prefix}Failing init - {repr(err)}")
             LOGGER.warning(f"{prefix}Continuining without Mlflow")
@@ -131,4 +136,5 @@ class MlflowLogger:
     def finish_run(self) -> None:
         """Member function to end mlflow run.
         """
-        self.mlflow.end_run()
+        if self.end_on_finish:
+            self.mlflow.end_run()
